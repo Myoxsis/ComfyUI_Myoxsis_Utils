@@ -19,6 +19,63 @@ def _tensor_to_pil(image_tensor):
     return Image.fromarray(image_array)
 
 
+def _load_lora_trigger_data(yaml_path):
+    if not yaml_path:
+        yaml_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "lora_triggers.yaml"
+        )
+
+    if not os.path.exists(yaml_path):
+        return {}
+
+    with open(yaml_path, "r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+
+    if isinstance(data, dict) and "lora_triggers" in data:
+        data = data.get("lora_triggers") or {}
+
+    if not isinstance(data, dict):
+        return {}
+
+    return data
+
+
+def _parse_trigger_words(raw_value):
+    if isinstance(raw_value, dict):
+        return [str(key) for key in raw_value.keys()]
+
+    if isinstance(raw_value, (list, tuple)):
+        return [str(item).strip() for item in raw_value if str(item).strip()]
+
+    if isinstance(raw_value, str):
+        words = []
+        for line in raw_value.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            tag_value = line
+            if " " in line:
+                tag_value, count = line.rsplit(" ", 1)
+                if not count.isdigit():
+                    tag_value = line
+            tag_value = tag_value.rstrip(":").strip()
+            if tag_value:
+                words.append(tag_value)
+        return words
+
+    return []
+
+
+def _normalize_trigger_selection(trigger_words):
+    if isinstance(trigger_words, str):
+        items = [item.strip() for item in trigger_words.split(",")]
+    elif isinstance(trigger_words, (list, tuple)):
+        items = [str(item).strip() for item in trigger_words]
+    else:
+        items = []
+    return [item for item in items if item]
+
+
 class SaveImageWithMetadata:
     @classmethod
     def INPUT_TYPES(cls):
@@ -149,3 +206,47 @@ class FindLoraTriggerWord:
             return ("", False)
 
         return (str(trigger_word), True)
+
+
+class LoraTriggerWordConditioning:
+    @classmethod
+    def INPUT_TYPES(cls):
+        data = _load_lora_trigger_data("")
+        lora_names = sorted(data.keys())
+        lora_choice = lora_names or [""]
+        trigger_choices = []
+        if lora_names:
+            trigger_choices = _parse_trigger_words(data.get(lora_names[0]))
+        return {
+            "required": {
+                "clip": ("CLIP",),
+                "lora_name": (lora_choice,),
+                "trigger_words": (
+                    trigger_choices,
+                    {"default": [], "multi_select": True},
+                ),
+            },
+            "optional": {
+                "yaml_path": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    RETURN_NAMES = ("conditioning",)
+    FUNCTION = "build_conditioning"
+
+    def build_conditioning(self, clip, lora_name, trigger_words, yaml_path=""):
+        data = _load_lora_trigger_data(yaml_path)
+        available_words = _parse_trigger_words(data.get(lora_name)) if data else []
+        selected = _normalize_trigger_selection(trigger_words)
+
+        if available_words:
+            available_set = {word.lower() for word in available_words}
+            selected = [
+                word for word in selected if word.lower() in available_set
+            ] or selected
+
+        prompt = ", ".join(selected)
+        tokens = clip.tokenize(prompt)
+        cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+        return ([[cond, {"pooled_output": pooled}]],)
