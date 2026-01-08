@@ -66,6 +66,15 @@ def _parse_trigger_words(raw_value):
     return []
 
 
+def _build_trigger_map(trigger_data):
+    if not isinstance(trigger_data, dict):
+        return {}
+    return {
+        str(lora_name): _parse_trigger_words(raw_value)
+        for lora_name, raw_value in trigger_data.items()
+    }
+
+
 def _normalize_trigger_selection(trigger_words):
     if isinstance(trigger_words, str):
         items = [item.strip() for item in trigger_words.split(",")]
