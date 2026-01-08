@@ -12,7 +12,8 @@ Custom ComfyUI nodes focused on metadata handling and LoRA trigger helpers.
 ## Installation
 
 1. Clone this repository into your ComfyUI `custom_nodes` directory.
-2. Restart ComfyUI.
+2. Install dependencies with `pip install -r requirements.txt`.
+3. Restart ComfyUI.
 
 ## LoRA trigger configuration
 
