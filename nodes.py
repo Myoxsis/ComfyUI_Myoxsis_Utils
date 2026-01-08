@@ -146,7 +146,16 @@ class ReadImageMetadata:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image_path": ("STRING", {"default": ""}),
+                "image": ("IMAGE",),
+                "seed": ("INT", {"default": 0, "min": 0}),
+                "steps": ("INT", {"default": 20, "min": 1}),
+                "cfg": ("FLOAT", {"default": 7.5, "min": 0.0}),
+                "sampler_name": ("STRING", {"default": ""}),
+                "scheduler": ("STRING", {"default": ""}),
+                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0}),
+                "positive_prompt": ("STRING", {"multiline": True, "default": ""}),
+                "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
+                "model_name": ("STRING", {"default": ""}),
             }
         }
 
@@ -154,14 +163,41 @@ class ReadImageMetadata:
     RETURN_NAMES = ("metadata",)
     FUNCTION = "read_metadata"
 
-    def read_metadata(self, image_path):
-        if not image_path:
-            return ("",)
-        with Image.open(image_path) as image:
-            metadata = image.info.get("comfyui_metadata")
-            if metadata is None:
-                metadata = json.dumps(image.info, ensure_ascii=False)
-        return (metadata,)
+    def read_metadata(
+        self,
+        image,
+        seed,
+        steps,
+        cfg,
+        sampler_name,
+        scheduler,
+        denoise,
+        positive_prompt,
+        negative_prompt,
+        model_name,
+    ):
+        metadata = {
+            "prompt": {
+                "positive": positive_prompt,
+                "negative": negative_prompt,
+            },
+            "ksampler": {
+                "seed": seed,
+                "steps": steps,
+                "cfg": cfg,
+                "sampler_name": sampler_name,
+                "scheduler": scheduler,
+                "denoise": denoise,
+            },
+            "model": model_name,
+        }
+
+        if hasattr(image, "info"):
+            existing_metadata = image.info.get("comfyui_metadata")
+            if existing_metadata:
+                metadata["image_metadata"] = existing_metadata
+
+        return (json.dumps(metadata, ensure_ascii=False),)
 
 
 class FindLoraTriggerWord:
