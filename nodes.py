@@ -19,12 +19,10 @@ def _tensor_to_pil(image_tensor):
     return Image.fromarray(image_array)
 
 
-def _load_lora_trigger_data(yaml_path):
-    if not yaml_path:
-        yaml_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "lora_triggers.yaml"
-        )
-
+def _load_lora_trigger_data():
+    yaml_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "lora_triggers.yaml"
+    )
     if not os.path.exists(yaml_path):
         return {}
 
@@ -212,7 +210,7 @@ class ReadImageMetadata:
 class LoraTriggerWordConditioning:
     @classmethod
     def INPUT_TYPES(cls):
-        data = _load_lora_trigger_data("")
+        data = _load_lora_trigger_data()
         lora_names = sorted(data.keys())
         lora_choice = lora_names or [""]
         trigger_choices = []
@@ -227,17 +225,14 @@ class LoraTriggerWordConditioning:
                     {"default": [], "multi_select": True},
                 ),
             },
-            "optional": {
-                "yaml_path": ("STRING", {"default": ""}),
-            },
         }
 
     RETURN_TYPES = ("CONDITIONING",)
     RETURN_NAMES = ("conditioning",)
     FUNCTION = "build_conditioning"
 
-    def build_conditioning(self, clip, lora_name, trigger_words, yaml_path=""):
-        data = _load_lora_trigger_data(yaml_path)
+    def build_conditioning(self, clip, lora_name, trigger_words):
+        data = _load_lora_trigger_data()
         available_words = _parse_trigger_words(data.get(lora_name)) if data else []
         selected = _normalize_trigger_selection(trigger_words)
 
