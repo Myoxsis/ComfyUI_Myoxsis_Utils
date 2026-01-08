@@ -40,6 +40,9 @@ app.registerExtension({
         }
 
         const triggerWords = triggerMap[selectedLora] || [];
+        triggerWidget.options ??= {};
+        triggerWidget.options.config ??= {};
+        triggerWidget.options.config.multi_select = true;
         triggerWidget.options.values = triggerWords;
 
         const current = Array.isArray(triggerWidget.value)
