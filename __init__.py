@@ -9,6 +9,8 @@ from .nodes import (
     _load_lora_trigger_data,
 )
 
+WEB_DIRECTORY = "./web"
+
 
 @PromptServer.instance.routes.get("/myoxsis-utils/lora-triggers")
 async def get_lora_triggers(request):
