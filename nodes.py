@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import numpy as np
+import yaml
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
@@ -104,3 +105,47 @@ class ReadImageMetadata:
             if metadata is None:
                 metadata = json.dumps(image.info, ensure_ascii=False)
         return (metadata,)
+
+
+class FindLoraTriggerWord:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "lora_name": ("STRING", {"default": ""}),
+            },
+            "optional": {
+                "yaml_path": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "BOOLEAN")
+    RETURN_NAMES = ("trigger_word", "found")
+    FUNCTION = "find_trigger"
+
+    def find_trigger(self, lora_name, yaml_path=""):
+        if not lora_name:
+            return ("", False)
+
+        if not yaml_path:
+            yaml_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "lora_triggers.yaml"
+            )
+
+        if not os.path.exists(yaml_path):
+            return ("", False)
+
+        with open(yaml_path, "r", encoding="utf-8") as handle:
+            data = yaml.safe_load(handle) or {}
+
+        if isinstance(data, dict) and "lora_triggers" in data:
+            data = data.get("lora_triggers") or {}
+
+        if not isinstance(data, dict):
+            return ("", False)
+
+        trigger_word = data.get(lora_name)
+        if not trigger_word:
+            return ("", False)
+
+        return (str(trigger_word), True)
